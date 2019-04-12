@@ -29,19 +29,19 @@ namespace Pipettor
             //MotorController.Instance.RotateAtSpeed(1, arm1Angle);
             //Thread.Sleep(100);
             //MotorController.Instance.RotateAtSpeed(2, arm2Angle);
+
             int tubeID = int.Parse(txtTubeID.Text);
-            double arm1Angle;
-            double arm2Angle;
 
 
             myCanvas.Move2Tube(tubeID);
 
-            //arm1Angle = ;
-            //arm2Angle = ;
+            double arm1Angle = myCanvas.GetArm1Angle();
+            double arm2Angle = myCanvas.GetArm2Angle();
 
-            //MotorController.Instance.RotateAtSpeed(1, arm1Angle);
-            //Thread.Sleep(100);
-            //MotorController.Instance.RotateAtSpeed(2, arm2Angle);
+
+            MotorController.Instance.RotateAtSpeed(1, arm1Angle);
+            Thread.Sleep(100);
+            MotorController.Instance.RotateAtSpeed(2, arm2Angle);
 
 
 

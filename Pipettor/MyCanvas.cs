@@ -16,6 +16,9 @@ namespace Pipettor
         System.Drawing.PointF jointPostion;
         System.Drawing.PointF ptIntersect1, ptIntersect2;
         Point dispensePt;
+        public float arm1Angle;
+        public float arm2Angle;
+
         int currentTubeIndex = 0;
 
         public MyCanvas()
@@ -115,7 +118,8 @@ namespace Pipettor
             }
         }
 
-    
+        internal float GetArm1Angle() {return arm1Angle;}
+        internal float GetArm2Angle() {return arm2Angle;}
 
         void Move2Point(System.Drawing.PointF dstPostion)
         {
@@ -125,8 +129,8 @@ namespace Pipettor
 
 
             //move arms
-            visualHost.MoveArm1(ptIntersect1);
-            visualHost.MoveArm2(ptIntersect1, dstPostion);
+            arm1Angle = visualHost.MoveArm1(ptIntersect1);
+            arm2Angle = visualHost.MoveArm2(ptIntersect1, dstPostion);
 
             InvalidateVisual();
         }
@@ -135,7 +139,7 @@ namespace Pipettor
         {
             int tubeIndex = tubeID - 1;
             currentTubeIndex = tubeIndex;
-            if (tubeIndex > 72 || tubeIndex<1)
+            if (tubeIndex > 73 || tubeIndex<0)
             {
                 MessageBox.Show("TubeID Less 1 or Over 72", "ERROR");
                 return;
@@ -193,11 +197,13 @@ namespace Pipettor
         public Point ptArm2Axis;
         public Point ptArm2AxisOrg;//原点
         public Point ptDispense;
+
         public const int secondArmLen = 120;
         public const int firstArmLen = 165;
         public const int firstJointMotorRadius = 45;
         public MyVisualHost()
         {
+          
             _children = new VisualCollection(this);
            //Point ptSecondArmBottomLeft;
             _children.Add(CreateFirstArm(out ptArm2Axis));
@@ -213,7 +219,7 @@ namespace Pipettor
             
         }
 
-        internal void MoveArm2(System.Drawing.PointF ptAxisNew, System.Drawing.PointF ptNewDispense)
+        internal float MoveArm2(System.Drawing.PointF ptAxisNew, System.Drawing.PointF ptNewDispense)
         {
             _children.RemoveAt(1);
             var drawingVisual = CreateSecondArm(ptArm2Axis,new Vector(ptAxisNew.X - ptArm2Axis.X,ptAxisNew.Y - ptArm2Axis.Y));
@@ -225,14 +231,16 @@ namespace Pipettor
             {
                 angle = -angle;
             }
+
             var rotateTransform = new RotateTransform(angle, ptAxisNew.X, ptAxisNew.Y);
             drawingVisual.Transform = rotateTransform;
             _children.Add(drawingVisual);
             //drawingVisual.Tra
+            return -angle;
         }
 
-      
-        public void MoveArm1(System.Drawing.PointF ptNew)
+
+        public float MoveArm1(System.Drawing.PointF ptNew)
         {
             Vector vecNew = new Vector(ptNew.X - ptArm1Axis.X, ptNew.Y - ptArm1Axis.Y);
             Vector vecOrg = new Vector(ptArm2AxisOrg.X - ptArm1Axis.X, ptArm2AxisOrg.Y - ptArm1Axis.Y);
@@ -246,10 +254,12 @@ namespace Pipettor
             }
             else
                 RotateArm1(angle);
-
-            
+            return angle;
 
         }
+       
+
+
 
         private DrawingVisual CreateSecondArm(Point ptSecondArmAxis,Vector offset)
         {
