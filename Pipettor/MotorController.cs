@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO.Ports;
 using System.Linq;
@@ -8,12 +9,15 @@ using System.Threading.Tasks;
 
 namespace Pipettor
 {
-    class MotorController
+    internal class MotorController
     {
 
         SerialPort serialPort;
+       
         static MotorController instance;
         Dictionary<int, double> eachMotorDegree;
+
+        public event EventHandler<Dictionary<int, float>> OnEncoderValue;
         static public MotorController Instance
         {
             get
@@ -24,20 +28,23 @@ namespace Pipettor
             }
         }
 
-        private MotorController()
+        MotorController()
         {
             serialPort = new SerialPort(GlobalVars.Instance.ComPort, 115200);
             serialPort.DataReceived += SerialPort_DataReceived;
             eachMotorDegree = new Dictionary<int, double>();
             eachMotorDegree[1] = 0;
             eachMotorDegree[2] = 0;
-
         }
 
         public void OpenSerialPort()
         {
+          
             serialPort.Open();
+          
         }
+
+    
 
         private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
@@ -47,9 +54,29 @@ namespace Pipettor
             int bytesRead = 0;
             bytesRead = sp.Read(BRecieve, 0, bytesToRead);
             string str = ToHexString(BRecieve);
-            Debug.WriteLine(str);
-        }
 
+            List<string> strs = new List<string>();
+            strs.AddRange(str.Split(' '));
+ 
+
+            if(OnEncoderValue!=null)
+            {
+                Dictionary<int, float> id_encoderValue = new Dictionary<int, float>();
+                
+                //取得arm1或2的起始位置并赋于id_encoderValue<arm,location>
+                if (strs[1].Equals("3E"))
+                {
+                    int startLocation = (Convert.ToInt32(strs[6], 16) * 255) + Convert.ToInt32(strs[5], 16);
+                    if (strs[2] == "01")
+                        id_encoderValue.Add(1, startLocation);
+                    if (strs[2] == "02")
+                        id_encoderValue.Add(2, startLocation);
+                }
+                OnEncoderValue(this, id_encoderValue);
+            }
+
+        }
+        
 
 
          string ToHexString(byte[] bytes)
@@ -82,9 +109,11 @@ namespace Pipettor
                 smallerThan10.Add(x);
         }
 
-        private void ReadEncoder()
+        public void ReadEncoder(int ID)
         {
             byte[] buffer = new byte[] { 0x3E, 0x90, 0x01, 0x00, 0xCF };
+            buffer[2] = (byte)ID;
+            buffer[4] = (byte)(ID - 1+0xCF);
             serialPort.Write(buffer, 0, buffer.Count());
         }
 
@@ -119,20 +148,40 @@ namespace Pipettor
             serialPort.Write(buffer.ToArray(), 0, buffer.Count);
         }
 
-
-        public void RotateAtSpeed(byte motorID, double angleDouble)
+        public void RotateRelativeAngle(byte motorID, double angleDouble)
         {
+            bool isClockWise = angleDouble > 0;
+            double dstAngle = eachMotorDegree[motorID] + angleDouble;
+            if (dstAngle < 0)
+                dstAngle += 360;
+            Rotate2ABSAngle(motorID, dstAngle);
+        }
+
+        public void Rotate2ABSAngle(byte motorID, double dstAngle)
+        {
+            if (dstAngle < 0)
+                dstAngle += 360;
             double currentDegree = eachMotorDegree[motorID];
+            bool isClockWise = dstAngle > currentDegree;
+            double angleDiff = dstAngle - currentDegree;
+            if (angleDiff > 180)
+                isClockWise = !isClockWise;
+
             byte[] buffer = new byte[10];//{0x3E, 0xA4, 0x01, 0x0C, 0xEF, 0x50, 0x46, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28, 0x23, 0x00, 0x00, 0xE1 };
-            //List<byte> buffer = new List<byte>();
-            //buffer.Add(0x3E);
+
             buffer[0] = 0x3E;
             buffer[1] = 0xA5;
             buffer[2] = motorID;
             buffer[3] = 0x04;
             buffer[4] = (byte)(buffer[0] + buffer[1] + buffer[2] + buffer[3]);
-            buffer[5] = angleDouble > currentDegree ? (byte)0x0 : (byte)0x1;
-            int angle = (int)(angleDouble * 100);
+            buffer[5] = isClockWise ? (byte)0x0 : (byte)0x1;
+
+           
+
+            //int angle = (int)((angleDouble * 100));
+            int angle = (int)Math.Abs(dstAngle * 100);
+
+
             byte[] angleBuff = BitConverter.GetBytes(angle);
             buffer[6] = angleBuff[0];
             buffer[7] = angleBuff[1];
@@ -141,9 +190,15 @@ namespace Pipettor
             List<Byte> bytes = new List<byte>(buffer);
 
             //serialPort.Write(bytes.ToArray(), 0, buffer.Count);
+            if (motorID == 1)
+                Debug.WriteLine(string.Format("Arm1 angle:{0}{1}°\n", buffer[5] == 0 ? "顺时针" : "逆时针", angle / 100));
+            else
+                Debug.WriteLine(string.Format("Arm2 angle:{0}{1}°\n", buffer[5] == 0 ? "顺时针" : "逆时针", angle / 100));
             serialPort.Write(buffer, 0, buffer.Length);
-            eachMotorDegree[motorID] = angleDouble;
 
+            eachMotorDegree[motorID] = dstAngle;
+
+          
         }
         public void Rotate(double angleDouble) //0.01
         {

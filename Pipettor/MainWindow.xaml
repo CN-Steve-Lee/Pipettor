@@ -14,21 +14,18 @@
         <local:MyCanvas x:Name="myCanvas" Height="1200">
 
         </local:MyCanvas>
-        <StackPanel Grid.Column="1">
-            <StackPanel Orientation="Horizontal">
-                <Label>臂1角度</Label>
-                <TextBox Width ="100" Name="txtArm1Angle">60</TextBox>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal">
-                <Label>臂2角度</Label>
-                <TextBox Width ="100" Name="txtArm2Angle">60</TextBox>
-            </StackPanel>
+
+        <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+            <StackPanel Orientation="Horizontal"/>
             <StackPanel Orientation="Horizontal">
                 <Label>TubeID:</Label>
                 <TextBox Width ="100" Name="txtTubeID">1</TextBox>
             </StackPanel>
             <Button Name="btnSetDegree" Click="btnSetDegree_Click">设置</Button>
-            
+            <!--<Button Name="btnSet10" Click="BtnSet10_Click">10</Button>
+            <Button Name="btnSet180" Click="BtnSet180_Click">180</Button>
+            <Button Name="btnSetMinus10" Click="BtnSetMinus10_Click">-10</Button>
+            <Button Name="btnSetMinus180" Click="BtnSetMinus180_Click">-180</Button>-->
         </StackPanel>
     </Grid>
 </Window>

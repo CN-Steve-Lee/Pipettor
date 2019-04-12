@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace Pipettor
 {
@@ -127,19 +130,29 @@ namespace Pipettor
             if (cnt == 2)
                 SelectRightOneAsFirst(ref ptIntersect1, ref ptIntersect2);
 
-
             //move arms
-            arm1Angle = visualHost.MoveArm1(ptIntersect1);
-            arm2Angle = visualHost.MoveArm2(ptIntersect1, dstPostion);
-
+            visualHost.MoveArm1(ptIntersect1);
+            Thread.Sleep(200);
+            visualHost.MoveArm2(ptIntersect1, dstPostion);
             InvalidateVisual();
         }
+
+        void Refresh()
+        {
+            Application.Current.Dispatcher.BeginInvoke(
+             DispatcherPriority.Background,
+               new Action(() =>
+               {
+                    // Do something here.
+                }));
+        }
+       
 
         internal void Move2Tube(int tubeID)
         {
             int tubeIndex = tubeID - 1;
             currentTubeIndex = tubeIndex;
-            if (tubeIndex > 73 || tubeIndex<0)
+            if (tubeID > 72 || tubeID < 1)
             {
                 MessageBox.Show("TubeID Less 1 or Over 72", "ERROR");
                 return;
@@ -219,7 +232,7 @@ namespace Pipettor
             
         }
 
-        internal float MoveArm2(System.Drawing.PointF ptAxisNew, System.Drawing.PointF ptNewDispense)
+        internal void MoveArm2(System.Drawing.PointF ptAxisNew, System.Drawing.PointF ptNewDispense)
         {
             _children.RemoveAt(1);
             var drawingVisual = CreateSecondArm(ptArm2Axis,new Vector(ptAxisNew.X - ptArm2Axis.X,ptAxisNew.Y - ptArm2Axis.Y));
@@ -231,16 +244,17 @@ namespace Pipettor
             {
                 angle = -angle;
             }
-
+         
+            
+            MotorController.Instance.Rotate2ABSAngle(2,angle);
             var rotateTransform = new RotateTransform(angle, ptAxisNew.X, ptAxisNew.Y);
             drawingVisual.Transform = rotateTransform;
             _children.Add(drawingVisual);
-            //drawingVisual.Tra
-            return -angle;
+
         }
 
 
-        public float MoveArm1(System.Drawing.PointF ptNew)
+        public void MoveArm1(System.Drawing.PointF ptNew)
         {
             Vector vecNew = new Vector(ptNew.X - ptArm1Axis.X, ptNew.Y - ptArm1Axis.Y);
             Vector vecOrg = new Vector(ptArm2AxisOrg.X - ptArm1Axis.X, ptArm2AxisOrg.Y - ptArm1Axis.Y);
@@ -251,10 +265,14 @@ namespace Pipettor
             if (ptNew.X < ptArm2AxisOrg.X) //rotate ccw
             {
                 RotateArm1(-angle);
+                angle = - angle;
             }
             else
+            {
                 RotateArm1(angle);
-            return angle;
+
+            }
+            MotorController.Instance.Rotate2ABSAngle(1, angle);
 
         }
        
@@ -320,9 +338,7 @@ namespace Pipettor
             //pts.Add(pt3);
             pts.Add(pt4);
             pts.Add(pt5);
-            //pts.Add(pt6);
-            //pts.Add(pt7);
-            //pts.Add(pt8);
+
             Point ptCircle = new Point(x, y);
             
             for (int i = 0; i< pts.Count; i++)
